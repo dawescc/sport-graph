@@ -1,0 +1,54 @@
+@import '@eleanes/biscuits/css/';
+
+@variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@layer base {
+	:root {
+		/* Using Radix-Colors */
+
+		/* Border Radius */
+		--border-radius: 0.6423466667em;
+
+		/* Font Size */
+		--font-size: 15px;
+
+		/* Spacing */
+		--spacing: 0.25rem;
+	}
+}
+
+@theme inline {
+	/* Using Radix-Colors */
+
+	/* Misc */
+	--radius: var(--border-radius);
+
+	/* Spacing */
+	--spacing: var(--spacing);
+
+	/* Fonts */
+	--font-sans: var(--font-sans-custom);
+	--font-serif: var(--font-serif-custom);
+	--font-display: var(--font-display-custom);
+	--font-mono: var(--font-mono-custom);
+}
+
+@layer base {
+	body {
+		@apply bg-gray-1 text-gray-12;
+	}
+
+	html {
+		font-size: var(--font-size);
+	}
+}
+
+@layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-4, currentColor);
+	}
+}
