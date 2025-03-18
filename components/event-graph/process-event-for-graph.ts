@@ -7,8 +7,14 @@ export function processEventsForGraph(events, monthOffset = 0) {
 
 	const graphData = [];
 	for (let day = 1; day <= daysInMonth; day++) {
+		// Create a date string in the format YYYY-MM-DD
+		const dateStr = `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+		// Create a date object with timezone consideration
+		const date = new Date(`${dateStr}T12:00:00-05:00`); // Using EST timezone (-05:00)
+
 		graphData.push({
-			date: new Date(targetYear, targetMonth, day),
+			date: date,
 			events: [],
 			hasCompletedEvent: false,
 			hasFutureEvent: false,
