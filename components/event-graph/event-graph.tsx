@@ -43,7 +43,7 @@ const CompletedGame = ({ game }) => (
 
 		<div className='mt-2 text-xs text-gray-11 flex items-center justify-between'>
 			<span>{game.leagueAbbreviation})</span>
-			<span>{new Date(game.date).toLocaleDateString()}</span>
+			<span>{new Date(game.date).toLocaleDateString("en-US", { timeZone: "America/New_York" })}</span>
 		</div>
 	</div>
 );
@@ -128,9 +128,10 @@ const FutureGame = ({ game }) => (
 				{game.leagueAbbreviation} {game.network && ` • ${game.network}`}
 			</span>
 			<span>
-				{new Date(game.date).toLocaleTimeString([], {
+				{new Date(game.date).toLocaleTimeString("en-US", {
 					hour: "numeric",
 					minute: "2-digit",
+					timeZone: "America/New_York",
 				})}
 			</span>
 		</div>
@@ -252,11 +253,12 @@ function EventDetails({ day, onClose, allLeagues }) {
 			{/* Header */}
 			<div className='flex justify-between items-center p-4 border-b border-gray-7 bg-gray-1'>
 				<h3 className='text-lg font-medium'>
-					{day.date.toLocaleDateString(undefined, {
+					{day.date.toLocaleDateString("en-US", {
 						weekday: "long",
 						month: "long",
 						day: "numeric",
 						year: "numeric",
+						timeZone: "America/New_York",
 					})}
 				</h3>
 				<button

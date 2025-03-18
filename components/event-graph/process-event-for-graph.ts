@@ -16,9 +16,17 @@ export function processEventsForGraph(events, monthOffset = 0) {
 	}
 
 	for (const event of events) {
-		const eventDay = event.date.getDate();
-		const eventMonth = event.date.getMonth();
-		const eventYear = event.date.getFullYear();
+		const formatter = new Intl.DateTimeFormat("en-US", {
+			timeZone: "America/New_York", // Use your preferred timezone
+			year: "numeric",
+			month: "numeric",
+			day: "numeric",
+		});
+
+		const parts = formatter.formatToParts(new Date(event.date));
+		const eventDay = parseInt(parts.find((part) => part.type === "day").value);
+		const eventMonth = parseInt(parts.find((part) => part.type === "month").value) - 1; // JS months are 0-indexed
+		const eventYear = parseInt(parts.find((part) => part.type === "year").value);
 
 		if (eventMonth === targetMonth && eventYear === targetYear) {
 			const index = eventDay - 1;
