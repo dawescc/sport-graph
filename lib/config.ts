@@ -3,7 +3,7 @@ export const siteConfig = {
 	title: "sports-graph",
 	url: process.env.NODE_ENV === "production" ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000",
 	ogImage: "/og.png",
-	description: "A design and engineering organization.",
+	description: "Sport Graph inspired by the Github Contribution graph.",
 	author: {
 		name: "dawescc",
 		website: "https://dawes.cc",
