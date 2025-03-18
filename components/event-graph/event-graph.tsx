@@ -544,7 +544,13 @@ export function ContributionGraph({ initialData }) {
 		// Fill in actual days
 		while (dayCounter <= daysInMonth) {
 			for (let i = firstDay; i < 7 && dayCounter <= daysInMonth; i++) {
-				const dayData = graphData.find((d) => d.date.getDate() === dayCounter) || {
+				const dayData = graphData.find((d) => {
+					const formatter = new Intl.DateTimeFormat("en-US", {
+						timeZone: "America/New_York",
+						day: "numeric",
+					});
+					return parseInt(formatter.format(d.date)) === dayCounter;
+				}) || {
 					date: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), dayCounter),
 					events: [],
 					hasCompletedEvent: false,
