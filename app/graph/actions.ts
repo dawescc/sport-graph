@@ -1,9 +1,10 @@
 "use server";
 
 import { unstable_cache } from "next/cache";
+import { Event, League, LeagueFilter } from "@/types";
 
-// Define the favorites object at module level so it's not recreated on each function call
-const favorites = {
+// Define the favorites object at module level
+const favorites: { leagues: LeagueFilter[] } = {
 	leagues: [
 		{ sportId: "soccer", leagueId: "uefa.champions" },
 		{ sportId: "soccer", leagueId: "uefa.wchampions" },
@@ -19,6 +20,7 @@ const favorites = {
 		{ sportId: "soccer", leagueId: "eng.w.fa" },
 		{ sportId: "soccer", leagueId: "ger.1" },
 		{ sportId: "soccer", leagueId: "aut.1" },
+		{ sportId: "baseball", leagueId: "college-baseball" },
 		{ sportId: "basketball", leagueId: "mens-college-basketball" },
 		{ sportId: "basketball", leagueId: "womens-college-basketball" },
 		{ sportId: "football", leagueId: "college-football" },
@@ -34,6 +36,11 @@ const getLeagueData = unstable_cache(
 				`https://sports.core.api.espn.com/v2/sports/${sportId}/leagues/${leagueId}?lang=en&region=us`,
 				{ next: { revalidate: 86400 } } // Cache for 24 hours
 			);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch league data: ${response.status}`);
+			}
+
 			return await response.json();
 		} catch (error) {
 			console.error(`Error fetching league data for ${sportId}/${leagueId}:`, error);
@@ -52,6 +59,11 @@ const getEventsForDate = unstable_cache(
 				`https://site.api.espn.com/apis/site/v2/sports/${sportId}/${leagueId}/scoreboard?dates=${formattedDate}&limit=100`,
 				{ next: { revalidate: 3600 } } // Cache for 1 hour
 			);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch events: ${response.status}`);
+			}
+
 			const data = await response.json();
 			return data.events || [];
 		} catch (error) {
@@ -64,7 +76,7 @@ const getEventsForDate = unstable_cache(
 );
 
 // Get all leagues for filtering
-export async function getLeagues() {
+export async function getLeagues(): Promise<League[]> {
 	const leagueData = await Promise.all(
 		favorites.leagues.map(async ({ sportId, leagueId }) => {
 			const data = await getLeagueData(sportId, leagueId);
@@ -80,8 +92,8 @@ export async function getLeagues() {
 	return leagueData;
 }
 
-// Main function to fetch events data
-export async function fetchEventsData(monthOffset = 0, activeLeagues: string[] | null = null) {
+// Optimized function to fetch events data with batching
+export async function fetchEventsData(monthOffset = 0, activeLeagues: string[] | null = null): Promise<Event[]> {
 	// Get target month with offset
 	const today = new Date();
 	const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -94,30 +106,45 @@ export async function fetchEventsData(monthOffset = 0, activeLeagues: string[] |
 		? favorites.leagues.filter((league) => activeLeagues.includes(`${league.sportId}-${league.leagueId}`))
 		: favorites.leagues;
 
-	// Process each league in parallel
-	const leaguePromises = leaguesToFetch.map(async ({ sportId, leagueId }) => {
-		try {
-			// Get league data
-			const leagueData = await getLeagueData(sportId, leagueId);
-			const leagueName = leagueData.name || "Unknown League";
-			const leagueAbbreviation = leagueData.abbreviation || "";
+	// Create a map of all dates in the month - use a more efficient format
+	const formattedDates: string[] = [];
+	for (let day = 1; day <= daysInMonth; day++) {
+		const formattedDate = `${targetYear}${String(targetMonth + 1).padStart(2, "0")}${String(day).padStart(2, "0")}`;
+		formattedDates.push(formattedDate);
+	}
 
-			// Create date promises for this league
-			const datePromises = [];
+	// Create batches of dates to reduce API calls
+	const batchSize = 7; // One week at a time
+	const dateBatches: string[][] = [];
+	for (let i = 0; i < formattedDates.length; i += batchSize) {
+		dateBatches.push(formattedDates.slice(i, i + batchSize));
+	}
 
-			// Batch days into weeks to reduce parallel requests
-			for (let day = 1; day <= daysInMonth; day += 7) {
-				const batchPromises = [];
+	// Process each league with controlled concurrency
+	const concurrencyLimit = 3; // Process 3 leagues at a time to avoid rate limiting
+	const allEvents: Event[] = [];
 
-				// Process up to 7 days in a batch
-				for (let i = 0; i < 7 && day + i <= daysInMonth; i++) {
-					const currentDay = day + i;
-					const date = new Date(targetYear, targetMonth, currentDay);
-					const formattedDate = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+	// Process leagues in batches to control concurrency
+	for (let i = 0; i < leaguesToFetch.length; i += concurrencyLimit) {
+		const leagueBatch = leaguesToFetch.slice(i, i + concurrencyLimit);
 
-					batchPromises.push(
-						getEventsForDate(sportId, leagueId, formattedDate).then((events) => {
-							return events.map((event) => ({
+		const leagueBatchResults = await Promise.all(
+			leagueBatch.map(async ({ sportId, leagueId }) => {
+				try {
+					// Get league data
+					const leagueData = await getLeagueData(sportId, leagueId);
+					const leagueName = leagueData.name || "Unknown League";
+					const leagueAbbreviation = leagueData.abbreviation || "";
+
+					const leagueEvents: Event[] = [];
+
+					// Process date batches sequentially
+					for (const dateBatch of dateBatches) {
+						const batchResults = await Promise.all(dateBatch.map((formattedDate) => getEventsForDate(sportId, leagueId, formattedDate)));
+
+						// Process events from this batch
+						for (const events of batchResults) {
+							const processedEvents = events.map((event) => ({
 								id: event.id,
 								date: new Date(event.date),
 								name: event.name,
@@ -134,26 +161,22 @@ export async function fetchEventsData(monthOffset = 0, activeLeagues: string[] |
 								homeScore: event.competitions?.[0]?.competitors?.find((c) => c.homeAway === "home")?.score || "",
 								awayScore: event.competitions?.[0]?.competitors?.find((c) => c.homeAway === "away")?.score || "",
 							}));
-						})
-					);
+
+							leagueEvents.push(...processedEvents);
+						}
+					}
+
+					return leagueEvents;
+				} catch (error) {
+					console.error(`Error processing league ${sportId}/${leagueId}:`, error);
+					return [];
 				}
+			})
+		);
 
-				// Process each batch sequentially to avoid too many parallel requests
-				datePromises.push(Promise.all(batchPromises).then((results) => results.flat()));
-			}
+		// Add all events from this batch of leagues
+		allEvents.push(...leagueBatchResults.flat());
+	}
 
-			// Wait for all date batches to complete
-			const allBatchResults = await Promise.all(datePromises);
-			return allBatchResults.flat();
-		} catch (error) {
-			console.error(`Error processing league ${sportId}/${leagueId}:`, error);
-			return [];
-		}
-	});
-
-	// Wait for all leagues to be processed
-	const leagueResults = await Promise.all(leaguePromises);
-
-	// Combine all events
-	return leagueResults.flat();
+	return allEvents;
 }
