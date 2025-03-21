@@ -1,116 +1,82 @@
-import useSWR, { mutate } from "swr";
-import { FilterState } from "@/types";
+import useSWR from "swr";
 
-const FILTER_KEY = "state:event-filters";
+// Simple type for our filters
+type Filters = {
+	leagues: string[];
+	teams: string[];
+};
 
+const FILTER_KEY = "sports-calendar-filters";
+
+/**
+ * Simple hook for managing filter state
+ */
 export function useFilters() {
-	const { data: filters, mutate: setFilters } = useSWR<FilterState>(FILTER_KEY, {
-		fallbackData: {
-			selectedLeagues: null,
-			selectedTeams: null,
-		},
-		revalidateOnFocus: false,
-		revalidateOnReconnect: false,
+	const { data, mutate } = useSWR<Filters>(FILTER_KEY, {
+		fallbackData: { leagues: [], teams: [] },
 	});
 
+	// Ensure data is always defined using the fallback
+	const filters = data || { leagues: [], teams: [] };
+
+	/**
+	 * Toggle a league filter
+	 */
 	const toggleLeague = (leagueId: string) => {
-		if (!filters) return;
+		const isSelected = filters.leagues.includes(leagueId);
 
-		setFilters((prev) => {
-			if (!prev) return prev;
-
-			// If null (all leagues selected), set to just this league
-			if (prev.selectedLeagues === null) {
-				return { ...prev, selectedLeagues: [leagueId] };
-			}
-
-			// If selectedLeagues is undefined, initialize it with this league
-			if (!prev.selectedLeagues) {
-				return { ...prev, selectedLeagues: [leagueId] };
-			}
-
-			// If this league is already selected
-			if (prev.selectedLeagues.includes(leagueId)) {
-				// If it's the only one selected, clear selection (show all)
-				if (prev.selectedLeagues.length === 1) {
-					return { ...prev, selectedLeagues: null };
-				}
-				// Otherwise remove it from selection
-				return {
-					...prev,
-					selectedLeagues: prev.selectedLeagues.filter((id) => id !== leagueId),
-				};
-			}
-
-			// Add this league to selection
-			return {
-				...prev,
-				selectedLeagues: [...prev.selectedLeagues, leagueId],
-			};
-		}, false);
+		if (isSelected) {
+			// Remove if already selected
+			mutate({
+				...filters,
+				leagues: filters.leagues.filter((id) => id !== leagueId),
+			});
+		} else {
+			// Add if not selected
+			mutate({
+				...filters,
+				leagues: [...filters.leagues, leagueId],
+			});
+		}
 	};
 
+	/**
+	 * Toggle a team filter
+	 */
 	const toggleTeam = (teamId: string) => {
-		if (!filters) return;
+		const isSelected = filters.teams.includes(teamId);
 
-		setFilters((prev) => {
-			if (!prev) return prev;
-
-			// If null (all teams selected), set to just this team
-			if (prev.selectedTeams === null) {
-				return { ...prev, selectedTeams: [teamId] };
-			}
-
-			// If this team is already selected
-			if (prev.selectedTeams.includes(teamId)) {
-				// If it's the only one selected, clear selection (show all)
-				if (prev.selectedTeams.length === 1) {
-					return { ...prev, selectedTeams: null };
-				}
-				// Otherwise remove it from selection
-				return {
-					...prev,
-					selectedTeams: prev.selectedTeams.filter((id) => id !== teamId),
-				};
-			}
-
-			// Add this team to selection
-			return {
-				...prev,
-				selectedTeams: [...prev.selectedTeams, teamId],
-			};
-		}, false);
+		if (isSelected) {
+			// Remove if already selected
+			mutate({
+				...filters,
+				teams: filters.teams.filter((id) => id !== teamId),
+			});
+		} else {
+			// Add if not selected
+			mutate({
+				...filters,
+				teams: [...filters.teams, teamId],
+			});
+		}
 	};
 
-	const resetTeamFilters = () => {
-		setFilters(
-			(prev) => ({
-				...prev!,
-				selectedTeams: null,
-			}),
-			false
-		);
-	};
-
+	/**
+	 * Reset all filters
+	 */
 	const resetFilters = () => {
-		setFilters(
-			{
-				selectedLeagues: null,
-				selectedTeams: null,
-			},
-			false
-		);
+		mutate({ leagues: [], teams: [] });
 	};
 
 	return {
 		filters,
 		toggleLeague,
 		toggleTeam,
-		resetTeamFilters,
 		resetFilters,
+
+		// Helper getters for component logic
+		hasFilters: filters.leagues.length > 0 || filters.teams.length > 0,
+		leagueCount: filters.leagues.length,
+		teamCount: filters.teams.length,
 	};
 }
-
-export const mutateFilters = (newFilters: FilterState) => {
-	mutate(FILTER_KEY, newFilters);
-};
