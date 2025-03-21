@@ -62,8 +62,8 @@ export function EventDetails({ day, onClose }: EventDetailsProps) {
 			open={true}
 			onOpenChange={() => onClose()}>
 			<Dialog.Portal>
-				<Dialog.Overlay className='fixed inset-0 bg-black/40' />
-				<Dialog.Content className='fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-lg w-full sm:-translate-x-1/2 sm:-translate-y-1/2 bg-gray-2 sm:rounded-lg flex flex-col max-h-[85vh] sm:max-h-[600px]'>
+				<Dialog.Overlay className='fixed inset-0 h-dvh bg-black/40' />
+				<Dialog.Content className='fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-lg w-full sm:-translate-x-1/2 sm:-translate-y-1/2 bg-gray-2 sm:rounded-lg flex flex-col h-full sm:max-h-[85dvh] sm:shadow-sm border-2'>
 					{/* Header */}
 					<div className='flex justify-between items-center p-4 border-b border-gray-7 bg-gray-1 sm:rounded-t-lg'>
 						<Dialog.Title className='text-lg font-medium'>

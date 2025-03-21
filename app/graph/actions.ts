@@ -92,6 +92,7 @@ export async function getLeagues(): Promise<League[]> {
 
 /**
  * Fetches all events for all leagues for a specific month
+ * @param monthOffset Number of months from current month (0 = current)
  */
 export async function fetchEventsData(monthOffset = 0): Promise<Event[]> {
 	// Get target month with offset
@@ -111,57 +112,77 @@ export async function fetchEventsData(monthOffset = 0): Promise<Event[]> {
 	// Fetch all events for all leagues for all dates
 	const allEvents: Event[] = [];
 
-	for (const { sportId, leagueId } of LEAGUES) {
-		try {
-			// Get league data
-			const leagueData = await getLeagueData(sportId, leagueId);
-			const leagueName = leagueData.name || "Unknown League";
-			const leagueAbbreviation = leagueData.abbreviation || "";
+	// Process leagues in batches of 5 to balance parallelism with resource usage
+	const batchSize = 5;
+	for (let i = 0; i < LEAGUES.length; i += batchSize) {
+		const batch = LEAGUES.slice(i, i + batchSize);
 
-			// Process each date
-			for (const formattedDate of formattedDates) {
-				const events = await getEventsForDate(sportId, leagueId, formattedDate);
+		const batchResults = await Promise.all(
+			batch.map(async ({ sportId, leagueId }) => {
+				try {
+					// Get league data
+					const leagueData = await getLeagueData(sportId, leagueId);
+					const leagueName = leagueData.name || "Unknown League";
+					const leagueAbbreviation = leagueData.abbreviation || "";
 
-				// Process events
-				const processedEvents = events.map(
-					(event: any): Event => ({
-						id: event.id,
-						date: new Date(event.date),
-						name: event.name,
-						completed: event.status?.type?.completed || false,
-						shortName: event.shortName || "",
-						league: leagueName,
-						leagueAbbreviation,
-						sportId,
-						leagueId,
-						network: event.competitions?.[0]?.broadcasts?.[0]?.names?.join(", ") || null,
-						venue: event.competitions?.[0]?.venue?.fullName || "",
-						homeTeam: {
-							id: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.id || "",
-							displayName: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.displayName || "Unknown Team",
-							abbreviation: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.abbreviation,
-							logo: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.logo,
-							color: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.color,
-							alternateColor: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.alternateColor,
-						},
-						awayTeam: {
-							id: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.id || "",
-							displayName: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.displayName || "Unknown Team",
-							abbreviation: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.abbreviation,
-							logo: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.logo,
-							color: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.color,
-							alternateColor: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.alternateColor,
-						},
-						homeScore: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.score || "",
-						awayScore: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.score || "",
-					})
-				);
+					const leagueEvents: Event[] = [];
 
-				allEvents.push(...processedEvents);
-			}
-		} catch (error) {
-			console.error(`Error processing league ${sportId}/${leagueId}:`, error);
-		}
+					// Process each date
+					for (const formattedDate of formattedDates) {
+						const events = await getEventsForDate(sportId, leagueId, formattedDate);
+
+						// Process events
+						const processedEvents = events.map(
+							(event: any): Event => ({
+								id: event.id,
+								date: new Date(event.date),
+								name: event.name,
+								completed: event.status?.type?.completed || false,
+								shortName: event.shortName || "",
+								league: leagueName,
+								leagueAbbreviation,
+								sportId,
+								leagueId,
+								network: event.competitions?.[0]?.broadcasts?.[0]?.names?.join(", ") || null,
+								venue: event.competitions?.[0]?.venue?.fullName || "",
+								homeTeam: {
+									id: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.id || "",
+									displayName:
+										event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.displayName || "Unknown Team",
+									abbreviation: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.abbreviation,
+									logo: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.logo,
+									color: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.color,
+									alternateColor: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.team?.alternateColor,
+								},
+								awayTeam: {
+									id: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.id || "",
+									displayName:
+										event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.displayName || "Unknown Team",
+									abbreviation: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.abbreviation,
+									logo: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.logo,
+									color: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.color,
+									alternateColor: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.team?.alternateColor,
+								},
+								homeScore: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "home")?.score || "",
+								awayScore: event.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === "away")?.score || "",
+							})
+						);
+
+						leagueEvents.push(...processedEvents);
+					}
+
+					return leagueEvents;
+				} catch (error) {
+					console.error(`Error processing league ${sportId}/${leagueId}:`, error);
+					return [];
+				}
+			})
+		);
+
+		// Combine batch results
+		batchResults.forEach((events) => {
+			allEvents.push(...events);
+		});
 	}
 
 	return allEvents;
