@@ -331,62 +331,66 @@ export function SportsCalendar({ initialData }: CalendarProps) {
 			)}
 
 			{/* Filter Dialog */}
-			<Dialog.Root
-				open={showFilters}
-				onOpenChange={setShowFilters}>
-				<Dialog.Portal>
-					<Dialog.Overlay className='fixed inset-0 h-dvh bg-black/40' />
-					<Dialog.Content className='fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-lg w-full sm:-translate-x-1/2 sm:-translate-y-1/2 bg-gray-2 sm:rounded-lg flex flex-col h-full sm:max-h-[85dvh] sm:shadow-sm border-2'>
-						<div className='flex justify-between items-center p-4 border-b border-gray-7 bg-gray-1 sm:rounded-t-lg'>
-							<Dialog.Title className='text-lg font-medium'>Filters</Dialog.Title>
-							<div className='flex items-center gap-2'>
-								{filters.leagues.length > 0 && (
-									<button
-										onClick={resetFilters}
-										className='text-sm text-blue-10 hover:underline'>
-										Reset
-									</button>
-								)}
-								<Dialog.Close
-									className='w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-7'
-									aria-label='Close'>
-									<FaTimes size={16} />
-								</Dialog.Close>
-							</div>
-						</div>
-
-						<div className='p-4 overflow-y-auto'>
-							{Object.entries(sportGroups).map(([sportId, sportLeagues]) => (
-								<div
-									key={sportId}
-									className='mb-4'>
-									<h3 className='text-sm font-medium mb-2'>{sportId.charAt(0).toUpperCase() + sportId.slice(1)}</h3>
-
-									<div className='flex flex-wrap gap-2'>
-										{sportLeagues.map((league) => {
-											const leagueId = `${league.sportId}-${league.id}`;
-											const isSelected = filters.leagues.includes(leagueId);
-
-											return (
-												<button
-													key={leagueId}
-													onClick={() => toggleLeague(leagueId)}
-													className={`
-                            px-3 py-1 text-sm rounded-full flex items-center gap-2
-                            ${isSelected ? "bg-blue-10 text-white" : "bg-gray-4 hover:bg-gray-5"}
-                          `}>
-													{league.name}
-													{isSelected && <FaTimes size={12} />}
-												</button>
-											);
-										})}
-									</div>
+			{showFilters && (
+				<Dialog.Root
+					open={showFilters}
+					onOpenChange={setShowFilters}>
+					<Dialog.Portal>
+						<Dialog.Overlay className='fixed inset-0 h-dvh bg-black/40' />
+						<Dialog.Content className='fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-w-lg w-full sm:-translate-x-1/2 sm:-translate-y-1/2 bg-gray-2 sm:rounded-lg flex flex-col h-full sm:max-h-[85dvh] sm:shadow-sm border-2'>
+							{/* Header */}
+							<div className='flex justify-between items-center p-4 border-b border-gray-7 bg-gray-1 sm:rounded-t-lg'>
+								<Dialog.Title className='text-lg font-medium'>Filters</Dialog.Title>
+								<div className='flex items-center gap-2'>
+									{filters.leagues.length > 0 && (
+										<button
+											onClick={resetFilters}
+											className='text-sm text-blue-10 hover:underline'>
+											Reset
+										</button>
+									)}
+									<Dialog.Close
+										className='w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-7'
+										aria-label='Close'>
+										<FaTimes size={18} />
+									</Dialog.Close>
 								</div>
-							))}
-						</div>
-					</Dialog.Content>
-				</Dialog.Portal>
-			</Dialog.Root>
+							</div>
+
+							{/* Content */}
+							<div className='p-4 overflow-y-auto'>
+								{Object.entries(sportGroups).map(([sportId, sportLeagues]) => (
+									<div
+										key={sportId}
+										className='mb-6'>
+										<h3 className='text-sm font-semibold mb-3'>{sportId.charAt(0).toUpperCase() + sportId.slice(1)}</h3>
+
+										<div className='flex flex-wrap gap-2'>
+											{sportLeagues.map((league) => {
+												const leagueId = `${league.sportId}-${league.id}`;
+												const isSelected = filters.leagues.includes(leagueId);
+
+												return (
+													<button
+														key={leagueId}
+														onClick={() => toggleLeague(leagueId)}
+														className={`
+                        px-3 py-1.5 text-sm rounded-full flex items-center gap-2
+                        ${isSelected ? "bg-blue-10 text-white" : "bg-gray-4 hover:bg-gray-5"}
+                      `}>
+														{league.name}
+														{isSelected && <FaTimes size={12} />}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								))}
+							</div>
+						</Dialog.Content>
+					</Dialog.Portal>
+				</Dialog.Root>
+			)}
 		</div>
 	);
 }
